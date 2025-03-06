@@ -2,10 +2,12 @@ package game.restAPI;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ClientHandler implements Runnable {
     private final Socket socket;
-    private final Router router; // Router instance
+    private final Router router;
 
     public ClientHandler(Socket socket, Router router) {
         this.socket = socket;
@@ -18,62 +20,59 @@ public class ClientHandler implements Runnable {
              OutputStream output = socket.getOutputStream()) {
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(input));
-
-            // Parse the HTTP request
             String requestLine = reader.readLine();
             if (requestLine == null || requestLine.isEmpty()) {
-                sendBadRequest(output, "Missing or empty request");
+                sendResponse(output, 400, "Bad Request: Empty Request");
                 return;
             }
 
-            System.out.println("Request Line: " + requestLine);
-
-            // Parse the HTTP method and path
             String[] requestParts = requestLine.split(" ");
             if (requestParts.length < 2) {
-                sendBadRequest(output, "Malformed request");
+                sendResponse(output, 400, "Bad Request: Invalid Request Line");
                 return;
             }
+
             String method = requestParts[0];
             String path = requestParts[1];
-
-            // Parse headers
+            Map<String, String> headers = new HashMap<>();
             String line;
             int contentLength = 0;
-            while ((line = reader.readLine()) != null && !line.isEmpty()) {
-                if (line.startsWith("Content-Length:")) {
-                    contentLength = Integer.parseInt(line.split(": ")[1]);
+
+            while (!(line = reader.readLine()).isEmpty()) {
+                String[] headerParts = line.split(": ", 2);
+                if (headerParts.length == 2) {
+                    headers.put(headerParts[0], headerParts[1]);
+                    if (headerParts[0].equalsIgnoreCase("Content-Length")) {
+                        contentLength = Integer.parseInt(headerParts[1]);
+                    }
                 }
             }
 
-            // Read the body if present
             StringBuilder body = new StringBuilder();
             if (contentLength > 0) {
-                char[] buffer = new char[contentLength];
-                reader.read(buffer, 0, contentLength);
-                body.append(buffer);
+                char[] bodyChars = new char[contentLength];
+                reader.read(bodyChars, 0, contentLength);
+                body.append(bodyChars);
             }
 
-            System.out.println("Body: " + body);
-
-            // Route the request
-            if (!router.route(method, path, output, body.toString())) {
-                sendNotFound(output, "Endpoint not found");
-            }
+            router.route(method, path, output, body.toString());
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
-    private void sendBadRequest(OutputStream output, String message) throws IOException {
-        String response = "HTTP/1.1 400 Bad Request\r\n\r\n" + message + "\n";
+    private void sendResponse(OutputStream output, int statusCode, String message) throws IOException {
+        String response = "HTTP/1.1 " + statusCode + " OK\r\n" +
+                "Content-Type: text/plain\r\n" +
+                "Content-Length: " + message.length() + "\r\n\r\n" +
+                message;
         output.write(response.getBytes());
-        System.out.println("HTTP/1.1 400 Bad Request - " + message);
-    }
-
-    private void sendNotFound(OutputStream output, String message) throws IOException {
-        String response = "HTTP/1.1 404 Not Found\r\n\r\n" + message + "\n";
-        output.write(response.getBytes());
-        System.out.println("HTTP/1.1 404 Not Found - " + message);
+        output.flush();
     }
 }

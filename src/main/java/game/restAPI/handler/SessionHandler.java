@@ -3,61 +3,48 @@ package game.restAPI.handler;
 import java.io.OutputStream;
 import java.io.IOException;
 import java.util.Map;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 public class SessionHandler {
     private static final Map<String, String> users = UserHandler.getUsers();
 
     public static void handleLogin(OutputStream output, String body) throws IOException {
-        String username = null;
-        String password = null;
+        String username;
+        String password;
 
         try {
-            // Attempt to parse the body as JSON-like input
-            if (body.contains("{") && body.contains("}")) {
-                String[] keyValuePairs = body.replace("{", "").replace("}", "").replace("\"", "").split(",");
-                for (String pair : keyValuePairs) {
-                    String[] keyValue = pair.split(":");
-                    if (keyValue.length == 2) {
-                        if (keyValue[0].trim().equalsIgnoreCase("username")) {
-                            username = keyValue[1].trim();
-                        } else if (keyValue[0].trim().equalsIgnoreCase("password")) {
-                            password = keyValue[1].trim();
-                        }
-                    }
-                }
-            }
+            JsonObject requestJson = JsonParser.parseString(body).getAsJsonObject();
+            username = requestJson.get("Username").getAsString();
+            password = requestJson.get("Password").getAsString();
         } catch (Exception e) {
-            // Log and proceed with error handling
-            System.err.println("Failed to parse request body: " + body);
+            sendJsonResponse(output, 400, "Invalid JSON format");
+            return;
         }
 
-        // Validate input
         if (username == null || password == null) {
-            String response = "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n\r\n" +
-                    "{\"error\":\"Missing username or password.\"}";
-            output.write(response.getBytes());
+            sendJsonResponse(output, 400, "Missing username or password");
             return;
         }
 
-        // Check credentials
-        if (!users.containsKey(username)) {
-            String response = "HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\n\r\n" +
-                    "{\"error\":\"Invalid username or password.\"}";
-            output.write(response.getBytes());
-            return;
+        if (users.containsKey(username) && users.get(username).equals(password)) {
+            String token = username + "-mtcgToken";
+            JsonObject jsonResponse = new JsonObject();
+            jsonResponse.addProperty("token", token);
+            sendJsonResponse(output, 200, jsonResponse.toString());
+        } else {
+            sendJsonResponse(output, 401, "Invalid credentials");
         }
+    }
 
-        if (!users.get(username).equals(password)) {
-            String response = "HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\n\r\n" +
-                    "{\"error\":\"Invalid username or password.\"}";
-            output.write(response.getBytes());
-            return;
-        }
-
-        // Generate token
-        String token = username + "-mtcgToken";
-        String response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n" +
-                "{\"token\":\"" + token + "\"}";
+    private static void sendJsonResponse(OutputStream output, int statusCode, String message) throws IOException {
+        JsonObject jsonResponse = new JsonObject();
+        jsonResponse.addProperty("message", message);
+        String response = "HTTP/1.1 " + statusCode + " OK\r\n" +
+                "Content-Type: application/json\r\n" +
+                "Content-Length: " + jsonResponse.toString().length() + "\r\n\r\n" +
+                jsonResponse.toString();
         output.write(response.getBytes());
+        output.flush();
     }
 }
