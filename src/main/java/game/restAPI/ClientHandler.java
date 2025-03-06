@@ -38,12 +38,17 @@ public class ClientHandler implements Runnable {
             String line;
             int contentLength = 0;
 
-            while (!(line = reader.readLine()).isEmpty()) {
+            while ((line = reader.readLine()) != null && !line.isEmpty()) {
                 String[] headerParts = line.split(": ", 2);
                 if (headerParts.length == 2) {
                     headers.put(headerParts[0], headerParts[1]);
                     if (headerParts[0].equalsIgnoreCase("Content-Length")) {
-                        contentLength = Integer.parseInt(headerParts[1]);
+                        try {
+                            contentLength = Integer.parseInt(headerParts[1]);
+                        } catch (NumberFormatException e) {
+                            sendResponse(output, 400, "Bad Request: Invalid Content-Length");
+                            return;
+                        }
                     }
                 }
             }
@@ -51,28 +56,46 @@ public class ClientHandler implements Runnable {
             StringBuilder body = new StringBuilder();
             if (contentLength > 0) {
                 char[] bodyChars = new char[contentLength];
-                reader.read(bodyChars, 0, contentLength);
+                int readChars = reader.read(bodyChars, 0, contentLength);
+                if (readChars != contentLength) {
+                    sendResponse(output, 400, "Bad Request: Content-Length Mismatch");
+                    return;
+                }
                 body.append(bodyChars);
             }
 
             router.route(method, path, output, body.toString());
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Error handling client request: " + e.getMessage());
         } finally {
             try {
                 socket.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                System.err.println("Error closing socket: " + e.getMessage());
             }
         }
     }
 
     private void sendResponse(OutputStream output, int statusCode, String message) throws IOException {
-        String response = "HTTP/1.1 " + statusCode + " OK\r\n" +
+        String reasonPhrase = getReasonPhrase(statusCode);
+        String response = "HTTP/1.1 " + statusCode + " " + reasonPhrase + "\r\n" +
                 "Content-Type: text/plain\r\n" +
                 "Content-Length: " + message.length() + "\r\n\r\n" +
                 message;
         output.write(response.getBytes());
         output.flush();
+    }
+
+    private String getReasonPhrase(int statusCode) {
+        return switch (statusCode) {
+            case 200 -> "OK";
+            case 201 -> "Created";
+            case 400 -> "Bad Request";
+            case 401 -> "Unauthorized";
+            case 403 -> "Forbidden";
+            case 404 -> "Not Found";
+            case 500 -> "Internal Server Error";
+            default -> "Unknown";
+        };
     }
 }

@@ -1,12 +1,6 @@
 package game.restAPI;
 
-import game.restAPI.handler.SessionHandler;
-import game.restAPI.handler.UserHandler;
-import game.restAPI.handler.CardHandler;
-import game.restAPI.handler.BattleHandler;
-import game.restAPI.handler.DeckHandler;
-import game.restAPI.handler.TradingHandler;
-
+import game.restAPI.controller.*;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
@@ -14,100 +8,112 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 
 public class Router {
-    // Map of routes to handler methods
     private final Map<String, BiConsumer<OutputStream, String>> routes = new HashMap<>();
 
-    // Register a new route
     public void registerRoute(String method, String path, BiConsumer<OutputStream, String> handler) {
-        routes.put(method + " " + path, handler); // Key is "METHOD /path"
+        routes.put(method + " " + path, handler);
     }
 
-    // Resolve a route and call the handler
     public boolean route(String method, String path, OutputStream output, String body) {
         BiConsumer<OutputStream, String> handler = routes.get(method + " " + path);
         if (handler != null) {
-            handler.accept(output, body); // Call the handler
+            handler.accept(output, body);
             return true;
         }
-        return false; // Route not found
+        return false;
     }
 
-    // Configure routes
     public void configureRoutes() {
         // User management
-        // User management
-        registerRoute("POST", "/users", (output, body) -> {
-            try {
-                UserHandler.handleUserRegistration(output, body);
-            } catch (IOException e) {
-                handleInternalServerError(output, e);
-            }
-        });
-
-        registerRoute("POST", "/sessions", (output, body) -> {
-            try {
-                SessionHandler.handleLogin(output, body);
-            } catch (IOException e) {
-                handleInternalServerError(output, e);
-            }
-        });
+        registerRoute("POST", "/users", this::handleUserRegistration);
+        registerRoute("POST", "/sessions", this::handleUserLogin);
 
         // Card management
-        registerRoute("GET", "/cards", (output, body) -> {
-            try {
-                CardHandler.handleGetCards(output);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        registerRoute("GET", "/cards", this::handleGetCards);
 
         // Deck management
-        registerRoute("GET", "/deck", (output, body) -> {
-            try {
-                DeckHandler.handleGetDeck(output);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-        registerRoute("PUT", "/deck", (output, body) -> {
-            try {
-                DeckHandler.handleSetDeck(output, body);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        registerRoute("GET", "/deck", this::handleGetDeck);
+        registerRoute("PUT", "/deck", this::handleSetDeck);
 
         // Battle
-        registerRoute("POST", "/battles", (output, body) -> {
-            try {
-                BattleHandler.handleStartBattle(output);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        registerRoute("POST", "/battles", this::handleStartBattle);
 
         // Trading
-        registerRoute("GET", "/tradings", (output, body) -> {
-            try {
-                TradingHandler.handleGetTradings(output);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-        registerRoute("POST", "/tradings", (output, body) -> {
-            try {
-                TradingHandler.handleCreateTrading(output, body);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-        registerRoute("DELETE", "/tradings/{id}", (output, body) -> {
-            try {
-                TradingHandler.handleDeleteTrading(output, body);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        registerRoute("GET", "/tradings", this::handleGetTradings);
+        registerRoute("POST", "/tradings", this::handleCreateTrading);
+        registerRoute("DELETE", "/tradings/{id}", this::handleDeleteTrading);
+    }
+
+    private void handleUserRegistration(OutputStream output, String body) {
+        try {
+            UserController.registerUser(output, body);
+        } catch (IOException e) {
+            handleInternalServerError(output, e);
+        }
+    }
+
+    private void handleUserLogin(OutputStream output, String body) {
+        try {
+            SessionController.loginUser(output, body);
+        } catch (IOException e) {
+            handleInternalServerError(output, e);
+        }
+    }
+
+    private void handleGetCards(OutputStream output, String body) {
+        try {
+            CardController.getCards(output);
+        } catch (IOException e) {
+            handleInternalServerError(output, e);
+        }
+    }
+
+    private void handleGetDeck(OutputStream output, String body) {
+        try {
+            DeckController.getDeck(output);
+        } catch (IOException e) {
+            handleInternalServerError(output, e);
+        }
+    }
+
+    private void handleSetDeck(OutputStream output, String body) {
+        try {
+            DeckController.setDeck(output, body);
+        } catch (IOException e) {
+            handleInternalServerError(output, e);
+        }
+    }
+
+    private void handleStartBattle(OutputStream output, String body) {
+        try {
+            BattleController.startBattle(output);
+        } catch (IOException e) {
+            handleInternalServerError(output, e);
+        }
+    }
+
+    private void handleGetTradings(OutputStream output, String body) {
+        try {
+            TradingController.getTradings(output);
+        } catch (IOException e) {
+            handleInternalServerError(output, e);
+        }
+    }
+
+    private void handleCreateTrading(OutputStream output, String body) {
+        try {
+            TradingController.createTrading(output, body);
+        } catch (IOException e) {
+            handleInternalServerError(output, e);
+        }
+    }
+
+    private void handleDeleteTrading(OutputStream output, String body) {
+        try {
+            TradingController.deleteTrading(output, body);
+        } catch (IOException e) {
+            handleInternalServerError(output, e);
+        }
     }
 
     private void handleInternalServerError(OutputStream output, Exception e) {

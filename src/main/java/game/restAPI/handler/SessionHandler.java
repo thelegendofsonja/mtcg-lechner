@@ -18,12 +18,12 @@ public class SessionHandler {
             username = requestJson.get("Username").getAsString();
             password = requestJson.get("Password").getAsString();
         } catch (Exception e) {
-            sendJsonResponse(output, 400, "Invalid JSON format");
+            sendJsonResponse(output, 400, "Invalid JSON format", "Bad Request");
             return;
         }
 
         if (username == null || password == null) {
-            sendJsonResponse(output, 400, "Missing username or password");
+            sendJsonResponse(output, 400, "Missing username or password", "Bad Request");
             return;
         }
 
@@ -31,19 +31,19 @@ public class SessionHandler {
             String token = username + "-mtcgToken";
             JsonObject jsonResponse = new JsonObject();
             jsonResponse.addProperty("token", token);
-            sendJsonResponse(output, 200, jsonResponse.toString());
+            sendJsonResponse(output, 200, jsonResponse.toString(), "OK");
         } else {
-            sendJsonResponse(output, 401, "Invalid credentials");
+            sendJsonResponse(output, 401, "Invalid credentials", "Unauthorized");
         }
     }
 
-    private static void sendJsonResponse(OutputStream output, int statusCode, String message) throws IOException {
+    private static void sendJsonResponse(OutputStream output, int statusCode, String message, String statusText) throws IOException {
         JsonObject jsonResponse = new JsonObject();
         jsonResponse.addProperty("message", message);
-        String response = "HTTP/1.1 " + statusCode + " OK\r\n" +
+        String response = "HTTP/1.1 " + statusCode + " " + statusText + "\r\n" +
                 "Content-Type: application/json\r\n" +
                 "Content-Length: " + jsonResponse.toString().length() + "\r\n\r\n" +
-                jsonResponse.toString();
+                jsonResponse;
         output.write(response.getBytes());
         output.flush();
     }
