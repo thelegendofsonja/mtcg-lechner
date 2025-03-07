@@ -2,11 +2,59 @@ package game.restAPI.handler;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.*;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 public class CardHandler {
-    public static void handleGetCards(OutputStream output) throws IOException {
-        String response = "HTTP/1.1 501 Not Implemented\r\n\r\nThis endpoint is not implemented yet.";
+    private static final Map<String, List<String>> userCards = new HashMap<>();
+    private static final Map<String, Integer> userCoins = new HashMap<>();
+
+    private static final String[] ALL_CARDS = {
+            "FireDragon", "WaterGoblin", "NormalKnight", "FireElf", "WaterSpell",
+            "FireSpell", "NormalSpell", "Kraken", "Wizard", "Ork"
+    };
+
+    public static void handleGetCards(OutputStream output, String username) throws IOException {
+        List<String> cards = userCards.getOrDefault(username, new ArrayList<>());
+        Gson gson = new Gson();
+        String jsonResponse = gson.toJson(cards);
+
+        sendJsonResponse(output, 200, jsonResponse);
+    }
+
+    public static void handleBuyPackage(OutputStream output, String username) throws IOException {
+        // Ensure the user has enough coins
+        int coins = userCoins.getOrDefault(username, 20);
+        if (coins < 5) {
+            sendJsonResponse(output, 400, "{ \"message\": \"Not enough coins to buy a package.\" }");
+            return;
+        }
+
+        // Deduct coins
+        userCoins.put(username, coins - 5);
+
+        // Generate 5 random cards
+        List<String> newCards = new ArrayList<>();
+        Random random = new Random();
+        for (int i = 0; i < 5; i++) {
+            newCards.add(ALL_CARDS[random.nextInt(ALL_CARDS.length)]);
+        }
+
+        // Add cards to user's stack
+        userCards.computeIfAbsent(username, k -> new ArrayList<>()).addAll(newCards);
+
+        Gson gson = new Gson();
+        sendJsonResponse(output, 200, gson.toJson(newCards));
+    }
+
+    private static void sendJsonResponse(OutputStream output, int statusCode, String json) throws IOException {
+        String response = "HTTP/1.1 " + statusCode + " OK\r\n" +
+                "Content-Type: application/json\r\n" +
+                "Content-Length: " + json.length() + "\r\n\r\n" +
+                json;
         output.write(response.getBytes());
-        System.out.println("HTTP/1.1 501 Not Implemented - GET /cards");
+        output.flush();
     }
 }
