@@ -1,39 +1,37 @@
 package game.restAPI.controller;
 
-import game.restAPI.repository.TradingRepository;
-import game.restAPI.handler.TradingHandler;
+import game.restAPI.repository.PackageRepository;
 import java.io.OutputStream;
 import java.io.IOException;
 
-public class TradingController implements Controller {
-    private final TradingRepository tradingRepository;
+public class TransactionController implements Controller {
+    private final PackageRepository packageRepository;
 
-    public TradingController(TradingRepository tradingRepository) {
-        this.tradingRepository = tradingRepository;
+    public TransactionController(PackageRepository packageRepository) {
+        this.packageRepository = packageRepository;
     }
 
     @Override
     public void handleRequest(String method, OutputStream output, String body, String username) throws IOException {
-        System.out.println("[DEBUG] Handling trading request: " + method);
+        System.out.println("[DEBUG] Handling transaction request: " + method);
 
-        try {
-            switch (method) {
-                case "GET":
-                    TradingHandler.handleGetTrades(output, username);
-                    break;
-                case "POST":
-                    TradingHandler.handleCreateTrade(output, body, username);
-                    break;
-                case "DELETE":
-                    TradingHandler.handleDeleteTrade(output, body, username);
-                    break;
-                default:
-                    sendResponse(output, 405, "Method Not Allowed");
-            }
-        } catch (Exception e) {
-            System.err.println("[ERROR] TradingController failed: " + e.getMessage());
-            sendResponse(output, 500, "Internal Server Error");
+        if (!method.equals("POST")) {
+            sendResponse(output, 405, "Method Not Allowed");
+            return;
         }
+
+        // Simulate package acquisition logic
+        boolean packageAcquired = acquirePackage(username);
+        if (packageAcquired) {
+            sendResponse(output, 201, "Package acquired successfully");
+        } else {
+            sendResponse(output, 403, "Not enough money or no packages available");
+        }
+    }
+
+    private boolean acquirePackage(String username) {
+        // TODO: Implement real package acquisition logic
+        return Math.random() > 0.5; // Simulated success/failure
     }
 
     private void sendResponse(OutputStream output, int statusCode, String message) throws IOException {
@@ -45,6 +43,7 @@ public class TradingController implements Controller {
             case 403 -> "Forbidden";
             case 404 -> "Not Found";
             case 405 -> "Method Not Allowed";
+            case 409 -> "Conflict";
             case 500 -> "Internal Server Error";
             default -> "Unknown";
         };

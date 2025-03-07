@@ -25,10 +25,16 @@ public class CardHandler {
     }
 
     public static void handleBuyPackage(OutputStream output, String username) throws IOException {
+        // Extract username from request (placeholder logic for now)
+        if (username == null || username.isEmpty()) {
+            sendJsonResponse(output, 401, new Gson().toJson(Map.of("message", "Unauthorized: Missing username")));
+            return;
+        }
+
         // Ensure the user has enough coins
         int coins = userCoins.getOrDefault(username, 20);
         if (coins < 5) {
-            sendJsonResponse(output, 400, "{ \"message\": \"Not enough coins to buy a package.\" }");
+            sendJsonResponse(output, 400, new Gson().toJson(Map.of("message", "Not enough coins to buy a package.")));
             return;
         }
 
@@ -46,7 +52,7 @@ public class CardHandler {
         userCards.computeIfAbsent(username, k -> new ArrayList<>()).addAll(newCards);
 
         Gson gson = new Gson();
-        sendJsonResponse(output, 200, gson.toJson(newCards));
+        sendJsonResponse(output, 200, gson.toJson(Map.of("new_cards", newCards)));
     }
 
     private static void sendJsonResponse(OutputStream output, int statusCode, String json) throws IOException {

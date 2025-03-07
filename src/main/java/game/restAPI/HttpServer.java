@@ -1,16 +1,12 @@
 package game.restAPI;
 
-import game.restAPI.handler.SessionHandler;
-import game.restAPI.handler.UserHandler;
-import game.restAPI.handler.CardHandler;
-import game.restAPI.handler.BattleHandler;
-import game.restAPI.handler.DeckHandler;
-import game.restAPI.handler.TradingHandler;
-
+import game.restAPI.repository.*;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -22,8 +18,16 @@ public class HttpServer {
     public HttpServer(int port, int maxThreads) {
         this.port = port;
         this.threadPool = Executors.newFixedThreadPool(maxThreads);
-        this.router = new Router();
-        this.router.configureRoutes(); // Configure routes
+
+        // ✅ Create the repository map and pass it to Router
+        Map<String, Repository> repositories = new HashMap<>();
+        repositories.put("user", new UserRepository());
+        repositories.put("package", new PackageRepository());
+        repositories.put("card", new CardRepository());
+        repositories.put("game", new GameRepository());
+        repositories.put("trade", new TradingRepository());
+
+        this.router = new Router(repositories);
     }
 
     private void handleInternalServerError(OutputStream output, Exception e) {

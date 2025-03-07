@@ -1,39 +1,37 @@
 package game.restAPI.controller;
 
-import game.restAPI.repository.TradingRepository;
-import game.restAPI.handler.TradingHandler;
+import game.restAPI.repository.UserRepository;
 import java.io.OutputStream;
 import java.io.IOException;
 
-public class TradingController implements Controller {
-    private final TradingRepository tradingRepository;
+public class LoginController implements Controller {
+    private final UserRepository userRepository;
 
-    public TradingController(TradingRepository tradingRepository) {
-        this.tradingRepository = tradingRepository;
+    public LoginController(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     @Override
     public void handleRequest(String method, OutputStream output, String body, String username) throws IOException {
-        System.out.println("[DEBUG] Handling trading request: " + method);
+        System.out.println("[DEBUG] Handling login request: " + method);
 
-        try {
-            switch (method) {
-                case "GET":
-                    TradingHandler.handleGetTrades(output, username);
-                    break;
-                case "POST":
-                    TradingHandler.handleCreateTrade(output, body, username);
-                    break;
-                case "DELETE":
-                    TradingHandler.handleDeleteTrade(output, body, username);
-                    break;
-                default:
-                    sendResponse(output, 405, "Method Not Allowed");
-            }
-        } catch (Exception e) {
-            System.err.println("[ERROR] TradingController failed: " + e.getMessage());
-            sendResponse(output, 500, "Internal Server Error");
+        if (!method.equals("POST")) {
+            sendResponse(output, 405, "Method Not Allowed");
+            return;
         }
+
+        // Simulate login validation
+        boolean loginSuccessful = validateUser(body);
+        if (loginSuccessful) {
+            sendResponse(output, 200, "User logged in successfully");
+        } else {
+            sendResponse(output, 401, "Login failed: Invalid username or password");
+        }
+    }
+
+    private boolean validateUser(String body) {
+        // TODO: Implement real authentication logic
+        return Math.random() > 0.5; // Simulated success/failure
     }
 
     private void sendResponse(OutputStream output, int statusCode, String message) throws IOException {
@@ -45,6 +43,7 @@ public class TradingController implements Controller {
             case 403 -> "Forbidden";
             case 404 -> "Not Found";
             case 405 -> "Method Not Allowed";
+            case 409 -> "Conflict";
             case 500 -> "Internal Server Error";
             default -> "Unknown";
         };

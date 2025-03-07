@@ -1,11 +1,23 @@
 package game.restAPI.controller;
 
+import game.restAPI.repository.GameRepository;
 import game.restAPI.handler.BattleHandler;
-import java.io.IOException;
 import java.io.OutputStream;
+import java.io.IOException;
 
-public class BattleController {
-    public static void startBattle(OutputStream output) throws IOException {
-        BattleHandler.handleStartBattle(output);
+public class BattleController implements Controller {
+    private final GameRepository gameRepository;
+
+    public BattleController(GameRepository gameRepository) {
+        this.gameRepository = gameRepository;
+    }
+
+    @Override
+    public void handleRequest(String method, OutputStream output, String body, String username) throws IOException {
+        if ("POST".equals(method)) {
+            BattleHandler.handleStartBattle(output, username);
+        } else {
+            output.write("HTTP/1.1 405 Method Not Allowed\r\n\r\n".getBytes());
+        }
     }
 }

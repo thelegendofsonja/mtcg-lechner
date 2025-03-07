@@ -1,11 +1,28 @@
 package game.restAPI.controller;
 
+import game.restAPI.repository.CardRepository;
 import game.restAPI.handler.CardHandler;
-import java.io.IOException;
 import java.io.OutputStream;
+import java.io.IOException;
 
-public class CardController {
-    public static void getCards(OutputStream output) throws IOException {
-        CardHandler.handleGetCards(output);
+public class CardController implements Controller {
+    private final CardRepository cardRepository;
+
+    public CardController(CardRepository cardRepository) {
+        this.cardRepository = cardRepository;
+    }
+
+    @Override
+    public void handleRequest(String method, OutputStream output, String body, String username) throws IOException {
+        switch (method) {
+            case "GET":
+                CardHandler.handleGetCards(output, username);
+                break;
+            case "POST":
+                CardHandler.handleBuyPackage(output, username);
+                break;
+            default:
+                output.write("HTTP/1.1 405 Method Not Allowed\r\n\r\n".getBytes());
+        }
     }
 }
